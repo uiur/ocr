@@ -23,6 +23,7 @@ def load_image(pattern, distort=False):
     image.set_shape(IMAGE_SHAPE)
     image = tf.cast(image, tf.float32)
     if distort:
+        image = tf.image.random_flip_left_right(image)
         image = tf.image.random_brightness(image, max_delta=0.4)
         image = tf.image.random_contrast(image, lower=0.6, upper=1.4)
 
