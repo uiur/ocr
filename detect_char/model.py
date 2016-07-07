@@ -64,7 +64,7 @@ def evaluate(logits, labels):
 
     return accuracy
 
-def predict(raw_images):
+def predict(model_path, raw_images):
     gray_images = tf.image.rgb_to_grayscale(tf.cast(tf.constant(raw_images), tf.float32))
     images = tf.image.resize_images(gray_images, data.SIZE, data.SIZE)
     logits = inference(images)
@@ -73,6 +73,6 @@ def predict(raw_images):
     sess = tf.Session()
 
     saver = tf.train.Saver()
-    saver.restore(sess, 'tmp_tensorflow/train2/20160706-7999')
+    saver.restore(sess, model_path)
 
     return sess.run(predictions)
