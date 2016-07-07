@@ -18,7 +18,7 @@ def conv2d(x, W):
 
 
 def inference(images, keep_prob=tf.constant(1.0)):
-    image = tf.reshape(images, [-1, data.SIZE, data.SIZE, data.CHANNEL])
+    image = tf.reshape(data.normalize(images), [-1, data.SIZE, data.SIZE, data.CHANNEL])
     W_conv1 = init_weight([5, 5, data.CHANNEL, 32])
     b_conv1 = init_bias([32])
 
@@ -67,7 +67,7 @@ def evaluate(logits, labels):
 def predict(raw_images):
     gray_images = tf.image.rgb_to_grayscale(tf.cast(tf.constant(raw_images), tf.float32))
     images = tf.image.resize_images(gray_images, data.SIZE, data.SIZE)
-    logits = inference(data.normalize(images))
+    logits = inference(images)
     predictions = tf.nn.softmax(logits)
 
     sess = tf.Session()

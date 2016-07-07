@@ -12,7 +12,6 @@ data_dir = os.path.abspath(os.path.dirname(__file__) + '/../data')
 def normalize(image):
     return image / 255.0 - 0.5
 
-
 def load_image(pattern, distort=False):
     filenames = glob.glob(pattern)
     queue = tf.train.string_input_producer(filenames)
@@ -24,22 +23,19 @@ def load_image(pattern, distort=False):
     image.set_shape(IMAGE_SHAPE)
     image = tf.cast(image, tf.float32)
     if distort:
-        image = tf.image.random_flip_left_right(image)
         image = tf.image.random_brightness(image, max_delta=0.4)
         image = tf.image.random_contrast(image, lower=0.6, upper=1.4)
-        image = tf.image.random_hue(image, max_delta=0.04)
-        image = tf.image.random_saturation(image, lower=0.6, upper=1.4)
 
-    return normalize(image)
+    return image
 
 
 def load_train_positive():
-    image = load_image(data_dir + '/char_or_not/train/1/*.png')
+    image = load_image(data_dir + '/char_or_not/train/1/*.png', distort=True)
     return tf.tuple([image, tf.constant([1., 0.])])
 
 
 def load_train_negative():
-    image = load_image(data_dir + '/char_or_not/train/0/*.png')
+    image = load_image(data_dir + '/char_or_not/train/0/*.png', distort=True)
     return tf.tuple([image, tf.constant([0., 1.])])
 
 
