@@ -8,7 +8,6 @@ CHANNEL = 1
 
 data_dir = os.path.abspath(os.path.dirname(__file__) + '/../data')
 
-
 def normalize(image):
     return image / 255.0 - 0.5
 
@@ -52,4 +51,11 @@ def load_test():
 
 
 def batch(batch_size):
-    return tf.train.shuffle_batch_join([load_train_positive(), load_train_negative()], batch_size, 10000, 10, enqueue_many=False, shapes=[IMAGE_SHAPE, [2]])
+    return tf.train.shuffle_batch_join(
+        [load_train_positive(), load_train_negative()],
+        batch_size,
+        100,
+        10,
+        enqueue_many=False,
+        shapes=[IMAGE_SHAPE, [2]]
+    )
