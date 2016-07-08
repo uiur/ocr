@@ -5,8 +5,8 @@ import string
 import numpy as np
 
 SIZE = 32
-IMAGE_SHAPE = [SIZE, SIZE, 1]
 CHANNEL = 1
+IMAGE_SHAPE = [SIZE, SIZE, CHANNEL]
 
 data_dir = os.path.abspath(os.path.dirname(__file__) + '/../data')
 
@@ -22,12 +22,11 @@ def load_image(pattern, distort=False):
 
     reader = tf.WholeFileReader()
     key, value = reader.read(queue)
-    image = tf.image.decode_png(value, channels=1)
+    image = tf.image.decode_png(value, channels=CHANNEL)
     image = tf.image.resize_images(image, SIZE, SIZE)
     image.set_shape(IMAGE_SHAPE)
     image = tf.cast(image, tf.float32)
     if distort:
-        image = tf.image.random_flip_left_right(image)
         image = tf.image.random_brightness(image, max_delta=0.4)
         image = tf.image.random_contrast(image, lower=0.6, upper=1.4)
 
@@ -62,11 +61,11 @@ def path_to_class_char(path):
     return class_char
 
 
-def load_from_dir(dirname):
+def load_from_dir(dirname, distort=False):
     image_ops = []
     for path in glob.glob(dirname + '/*'):
         class_char = path_to_class_char(path)
-        image_op = load_image(path + '/*.png')
+        image_op = load_image(path + '/*.png', distort=distort)
 
         t = tf.tuple([image_op, tf.constant(char_to_label(class_char))])
 
@@ -76,7 +75,7 @@ def load_from_dir(dirname):
 
 
 def load_train():
-    return load_from_dir(data_dir + '/char74k/train')
+    return load_from_dir(data_dir + '/char74k/train', distort=True)
 
 
 def load_test():
