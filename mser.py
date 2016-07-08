@@ -11,7 +11,13 @@ def corners_of_region(region):
     return top_left, bottom_right
 
 
-def extract_region(img, region):
+def bounding_boxes(img):
+    mser = cv2.MSER(_min_area=10)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    regions = mser.detect(gray)
+
+
+def bounding_box_of_region(img, region):
     top_left, bottom_right = corners_of_region(region)
 
     height, width, _ = img.shape
@@ -22,7 +28,13 @@ def extract_region(img, region):
 
     x_min = max(0, top_left[0]-margin)
     x_max = min(width-1, bottom_right[0]+margin)
-    region_of_image = img.copy()[y_min:y_max+1, x_min:x_max+1]
+
+    return (x_min, y_min, x_max - x_min, y_max - y_min)
+
+
+def extract_region(img, region):
+    (x, y, w, h) = bounding_box_of_region(img, region)
+    region_of_image = img.copy()[y:y+h+1, x:x+w+1]
 
     return region_of_image
 
@@ -42,16 +54,19 @@ def region_gray(img, region):
 
     return mask
 
-
-def mser_rois(img):
+def detect_regions(img):
     mser = cv2.MSER(_min_area=10)
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    regions = mser.detect(gray)
+    return mser.detect(gray)
+
+def mser_rois(img):
+    regions = detect_regions(img)
 
     return [extract_region(img, region) for region in regions]
 
 if __name__ == '__main__':
     img = cv2.imread(sys.argv[1])
+    rois = mser_rois(img)
 
     i = 0
     for roi in rois:
