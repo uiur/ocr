@@ -23,8 +23,10 @@ rois = np.array([cv2.resize(roi, (32, 32)) for roi in rois])
 
 probs = detect_char.model.predict(path, rois)
 positive_boxes = []
+
+threshold = 0.6
 for index, value in enumerate(probs):
-    if value[0] - value[1] > 0.1:
+    if value[0] > threshold:
         positive_boxes.append(boxes[index])
 
 # for box in positive_boxes:
