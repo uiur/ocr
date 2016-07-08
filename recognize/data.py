@@ -66,7 +66,7 @@ def load_from_dir(dirname):
     image_ops = []
     for path in glob.glob(dirname + '/*'):
         class_char = path_to_class_char(path)
-        image_op = load_image(dirname + '/%s/*.png' % (class_char))
+        image_op = load_image(path + '/*.png')
 
         t = tf.tuple([image_op, tf.constant(char_to_label(class_char))])
 

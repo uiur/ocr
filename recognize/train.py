@@ -50,4 +50,4 @@ for i in range(10000):
   if (i+1) % 1000 == 0:
      saver.save(sess, './tmp_tensorflow/recognize/20160708', global_step=(i + 1))
 
-print(sess.run(accuracy, feed_dict={x: test_images, y_: test_labels}))
+print(sess.run(accuracy, feed_dict={x: test_images, y_: test_labels, keep_prob: 1.0 }))
