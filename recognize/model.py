@@ -64,3 +64,18 @@ def evaluate(logits, labels):
     accuracy_summary = tf.scalar_summary("accuracy", accuracy)
 
     return accuracy
+
+
+def predict(model_path, raw_images):
+    gray_images = tf.image.rgb_to_grayscale(tf.cast(tf.constant(raw_images), tf.float32))
+    images = tf.image.resize_images(gray_images, data.SIZE, data.SIZE)
+    logits = inference(images, keep_prob=tf.constant(1.0))  # workaround
+    predictions = tf.nn.softmax(logits)
+
+    with tf.Session() as sess:
+        sess.run(tf.initialize_all_variables())
+
+        saver = tf.train.Saver()
+        saver.restore(sess, model_path)
+
+        return sess.run(predictions)

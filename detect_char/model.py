@@ -70,9 +70,9 @@ def predict(model_path, raw_images):
     logits = inference(images)
     predictions = tf.nn.softmax(logits)
 
-    sess = tf.Session()
+    with tf.Session() as sess:
+        saver = tf.train.Saver()
+        saver.restore(sess, model_path)
 
-    saver = tf.train.Saver()
-    saver.restore(sess, model_path)
-
-    return sess.run(predictions)
+        probs = sess.run(predictions)
+        return probs
