@@ -80,7 +80,14 @@ def load_train():
 
 def load_test():
     image_ops = load_from_dir(data_dir + '/icdar2003_test/test')
-    test_size = len(glob.glob(data_dir + '/icdar2003_test/test/*/*.png'))
-    batch_op = tf.train.batch_join(image_ops, test_size) # read all
+    batch_op = tf.train.batch_join(image_ops, test_size())  # read all
 
     return batch_op
+
+def load_test_batch(size=100):
+    image_ops = load_from_dir(data_dir + '/icdar2003_test/test')
+
+    return tf.train.batch_join(image_ops, size)
+
+def test_size():
+    return len(glob.glob('data/icdar2003_test/test/*/*.png'))

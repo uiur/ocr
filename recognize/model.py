@@ -18,30 +18,31 @@ def conv2d(x, W):
     return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME')
 
 
-def inference(images, keep_prob=tf.constant(1.0)):
+def inference(images, keep_prob=tf.constant(1.0), layer_num1=32, layer_num2=64, layer_num3=1024):
+
     image = tf.reshape(data.normalize(images), [-1, data.SIZE, data.SIZE, data.CHANNEL])
-    W_conv1 = init_weight([5, 5, data.CHANNEL, 32])
-    b_conv1 = init_bias([32])
+    W_conv1 = init_weight([5, 5, data.CHANNEL, layer_num1])
+    b_conv1 = init_bias([layer_num1])
 
     h_conv1 = tf.nn.relu(conv2d(image, W_conv1) + b_conv1)
     h_pool1 = tf.nn.max_pool(h_conv1, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
 
-    W_conv2 = init_weight([5, 5, 32, 64])
-    b_conv2 = init_bias([64])
+    W_conv2 = init_weight([5, 5, layer_num1, layer_num2])
+    b_conv2 = init_bias([layer_num2])
 
     h_conv2 = tf.nn.relu(conv2d(h_pool1, W_conv2) + b_conv2)
     h_pool2 = tf.nn.max_pool(h_conv2, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
 
-    size = data.SIZE / 2 / 2
-    W_fc1 = init_weight([size * size * 64, 1024])
-    b_fc1 = init_bias([1024])
+    size = data.SIZE / (2 ** 2)
+    W_fc1 = init_weight([size * size * layer_num2, layer_num3])
+    b_fc1 = init_bias([layer_num3])
 
-    h_pool2_flat = tf.reshape(h_pool2, [-1, size * size * 64])
+    h_pool2_flat = tf.reshape(h_pool2, [-1, size * size * layer_num2])
     h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
 
     h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
 
-    W_fc2 = init_weight([1024, output_size])
+    W_fc2 = init_weight([layer_num3, output_size])
     b_fc2 = init_bias([output_size])
 
     return tf.matmul(h_fc1_drop, W_fc2) + b_fc2
@@ -64,6 +65,11 @@ def evaluate(logits, labels):
     accuracy_summary = tf.scalar_summary("accuracy", accuracy)
 
     return accuracy
+
+
+def correct_prediction_count(logits, labels):
+    correct_prediction = tf.equal(tf.argmax(logits, 1), tf.argmax(labels, 1))
+    return tf.reduce_sum(tf.cast(correct_prediction, tf.float32))
 
 
 def predict(model_path, raw_images):
