@@ -3,6 +3,19 @@ import time
 
 import data
 import model
+import datetime
+
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    '--learning-rate', type=float,
+    default=0.001
+)
+
+args = parser.parse_args()
+
+date_str = datetime.datetime.now().strftime("%Y%m%d")
 
 x = tf.placeholder(tf.float32, shape=[None, data.SIZE, data.SIZE, data.CHANNEL])
 y_ = tf.placeholder(tf.float32, shape=[None, len(data.label_chars)])
@@ -12,7 +25,7 @@ logits = model.inference(x, keep_prob=keep_prob)
 total_loss = model.loss(logits, y_)
 predictions = tf.nn.softmax(logits)
 
-train_step = model.train(total_loss)
+train_step = model.train(total_loss, learning_rate=args.learning_rate)
 
 batch_op = data.batch(50)
 load_test_op = data.load_test()
@@ -50,7 +63,7 @@ while True:
   sess.run(train_step, feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.5})
 
   if (i-1) % 1000 == 0:
-      saver.save(sess, './tmp_tensorflow/recognize/20160708', global_step=(i + 1))
+      saver.save(sess, './tmp_tensorflow/recognize/' + date_str, global_step=(i + 1))
 
       test_accuracy = sess.run(accuracy, feed_dict={x: test_images, y_: test_labels, keep_prob: 1.0})
 

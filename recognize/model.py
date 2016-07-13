@@ -51,10 +51,10 @@ def loss(logits, labels):
     return tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits, labels))
 
 
-def train(total_loss):
+def train(total_loss, learning_rate=0.001):
     ce_summ = tf.scalar_summary("loss", total_loss)
 
-    return tf.train.AdamOptimizer().minimize(total_loss)
+    return tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(total_loss)
 
 
 def evaluate(logits, labels):
