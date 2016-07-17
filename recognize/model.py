@@ -18,7 +18,7 @@ def conv2d(x, W):
     return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME')
 
 
-def inference(images, keep_prob=tf.constant(1.0), layer_num1=32, layer_num2=64, layer_num3=1024):
+def inference(images, keep_prob=tf.constant(1.0), layer_num1=32, layer_num2=64, layer_num3=64, layer_num4=64, flat_layer_num=1024):
 
     image = tf.reshape(data.normalize(images), [-1, data.SIZE, data.SIZE, data.CHANNEL])
     W_conv1 = init_weight([5, 5, data.CHANNEL, layer_num1])
@@ -33,16 +33,30 @@ def inference(images, keep_prob=tf.constant(1.0), layer_num1=32, layer_num2=64, 
     h_conv2 = tf.nn.relu(conv2d(h_pool1, W_conv2) + b_conv2)
     h_pool2 = tf.nn.max_pool(h_conv2, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
 
-    size = int(data.SIZE / (2 ** 2))
-    W_fc1 = init_weight([size * size * layer_num2, layer_num3])
-    b_fc1 = init_bias([layer_num3])
+    W_conv3 = init_weight([5, 5, layer_num2, layer_num3])
+    b_conv3 = init_bias([layer_num3])
 
-    h_pool2_flat = tf.reshape(h_pool2, [-1, size * size * layer_num2])
-    h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
+    h_conv3 = tf.nn.relu(conv2d(h_pool2, W_conv3) + b_conv3)
+    h_pool3 = tf.nn.max_pool(h_conv3, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+
+    W_conv4 = init_weight([5, 5, layer_num3, layer_num4])
+    b_conv4 = init_bias([layer_num4])
+
+    h_conv4 = tf.nn.relu(conv2d(h_pool3, W_conv4) + b_conv4)
+    h_pool4 = tf.nn.max_pool(h_conv4, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+
+    last_pool = h_pool4
+
+    size = int(data.SIZE / (2 ** 4))
+    W_fc1 = init_weight([size * size * layer_num4, flat_layer_num])
+    b_fc1 = init_bias([flat_layer_num])
+
+    h_pool_flat = tf.reshape(last_pool, [-1, size * size * layer_num4])
+    h_fc1 = tf.nn.relu(tf.matmul(h_pool_flat, W_fc1) + b_fc1)
 
     h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
 
-    W_fc2 = init_weight([layer_num3, output_size])
+    W_fc2 = init_weight([flat_layer_num, output_size])
     b_fc2 = init_bias([output_size])
 
     return tf.matmul(h_fc1_drop, W_fc2) + b_fc2

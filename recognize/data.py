@@ -4,7 +4,7 @@ import os
 import string
 import numpy as np
 
-SIZE = 32
+SIZE = 64
 CHANNEL = 1
 IMAGE_SHAPE = [SIZE, SIZE, CHANNEL]
 
