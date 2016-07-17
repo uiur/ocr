@@ -24,7 +24,7 @@ parser.add_argument(
 )
 
 args = parser.parse_args()
-print vars(args)
+print(vars(args))
 
 TEST_SIZE = data.test_size()
 

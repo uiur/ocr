@@ -84,7 +84,7 @@ def load_test():
 
     return batch_op
 
-def load_test_batch(size=100):
+def load_test_batch(size=0):
     image_ops = load_from_dir(data_dir + '/icdar2003_test/test')
 
     return tf.train.batch_join(image_ops, size)

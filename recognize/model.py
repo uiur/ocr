@@ -33,7 +33,7 @@ def inference(images, keep_prob=tf.constant(1.0), layer_num1=32, layer_num2=64, 
     h_conv2 = tf.nn.relu(conv2d(h_pool1, W_conv2) + b_conv2)
     h_pool2 = tf.nn.max_pool(h_conv2, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
 
-    size = data.SIZE / (2 ** 2)
+    size = int(data.SIZE / (2 ** 2))
     W_fc1 = init_weight([size * size * layer_num2, layer_num3])
     b_fc1 = init_bias([layer_num3])
 
