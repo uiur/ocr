@@ -4,7 +4,7 @@ import os
 import string
 import numpy as np
 
-SIZE = 64
+SIZE = 32
 CHANNEL = 1
 IMAGE_SHAPE = [SIZE, SIZE, CHANNEL]
 
@@ -29,6 +29,9 @@ def load_image(pattern, distort=False):
     if distort:
         image = tf.image.random_brightness(image, max_delta=0.4)
         image = tf.image.random_contrast(image, lower=0.6, upper=1.4)
+        if CHANNEL == 3:
+            image = tf.image.random_hue(image, 0.2)
+            image = tf.image.random_saturation(image, 0.6, 1.4)
 
     return image
 

@@ -18,8 +18,7 @@ def conv2d(x, W):
     return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME')
 
 
-def inference(images, keep_prob=tf.constant(1.0), layer_num1=32, layer_num2=64, layer_num3=64, layer_num4=64, flat_layer_num=1024):
-
+def inference(images, keep_prob=tf.constant(1.0), layer_num1=32, layer_num2=64, layer_num3=64, flat_layer_num=1024):
     image = tf.reshape(data.normalize(images), [-1, data.SIZE, data.SIZE, data.CHANNEL])
     W_conv1 = init_weight([5, 5, data.CHANNEL, layer_num1])
     b_conv1 = init_bias([layer_num1])
@@ -39,19 +38,14 @@ def inference(images, keep_prob=tf.constant(1.0), layer_num1=32, layer_num2=64, 
     h_conv3 = tf.nn.relu(conv2d(h_pool2, W_conv3) + b_conv3)
     h_pool3 = tf.nn.max_pool(h_conv3, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
 
-    W_conv4 = init_weight([5, 5, layer_num3, layer_num4])
-    b_conv4 = init_bias([layer_num4])
+    last_pool = h_pool3
 
-    h_conv4 = tf.nn.relu(conv2d(h_pool3, W_conv4) + b_conv4)
-    h_pool4 = tf.nn.max_pool(h_conv4, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
-
-    last_pool = h_pool4
-
-    size = int(data.SIZE / (2 ** 4))
-    W_fc1 = init_weight([size * size * layer_num4, flat_layer_num])
+    size = int(data.SIZE / (2 ** 3))
+    flat_size = size * size * layer_num3
+    W_fc1 = init_weight([flat_size, flat_layer_num])
     b_fc1 = init_bias([flat_layer_num])
 
-    h_pool_flat = tf.reshape(last_pool, [-1, size * size * layer_num4])
+    h_pool_flat = tf.reshape(last_pool, [-1, flat_size])
     h_fc1 = tf.nn.relu(tf.matmul(h_pool_flat, W_fc1) + b_fc1)
 
     h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)

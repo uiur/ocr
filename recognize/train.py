@@ -7,6 +7,8 @@ import datetime
 
 import argparse
 
+tf.set_random_seed(42)
+
 parser = argparse.ArgumentParser()
 parser.add_argument(
     '--learning-rate', type=float,
@@ -98,9 +100,6 @@ while True:
 
         # early stopping
         if step >= 2000 and abs(test_accuracy - prev_test_accuracy) < prev_test_accuracy * 0.05:
-            break
-
-        if step >= 10000:
             break
 
         prev_test_accuracy = test_accuracy
