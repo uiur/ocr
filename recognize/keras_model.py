@@ -26,7 +26,7 @@ nb_test = 1000
 data_augmentation = True
 
 img_rows, img_cols = 32, 32
-img_channels = 3
+img_channels = 1
 
 
 def char_to_label(char):
@@ -60,7 +60,11 @@ def load_test():
 
 
 def read_image(path):
-    image = imresize(imread(path, mode='RGB'), (img_rows, img_cols))
+    mode = 'RGB' if img_channels == 3 else 'L'
+    image = imresize(imread(path, mode=mode), (img_rows, img_cols))
+    if img_channels == 1:
+        image = np.expand_dims(image, axis=2)
+
     image = image.transpose((2, 1, 0)).astype('float32')
     return image / 255.0
 
@@ -83,6 +87,7 @@ def load_data(dirname, sample_size=1024):
         labels = np.array([char_to_label(char) for char in chars])
 
         yield images, labels
+
 
 def deprocess_image(image):
     image = image.transpose((1, 2, 0))
@@ -123,6 +128,7 @@ x_test, y_test = load_test()
 datagen = ImageDataGenerator(
     rotation_range=30,
 )
+datagen.fit(x_test)
 
 epoch = 0
 for x_train, y_train in load_data('./data/char74k/train'):
