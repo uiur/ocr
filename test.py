@@ -30,7 +30,7 @@ probs = detect_char.model.predict(path, rois)
 positive_boxes = []
 positive_rois = []
 
-threshold = 0.6
+threshold = 0.9
 for index, value in enumerate(probs):
     if value[0] > threshold:
         positive_boxes.append(boxes[index])
@@ -50,10 +50,32 @@ probs = recognize_model.predict(recognize_input)
 
 args = np.argsort(-probs)
 
+candidates = []
 for i, box in enumerate(positive_boxes):
-    top_char = recognize.data.label_chars[args[i][0]]
+    candidates.append({
+        'box': box,
+        'prob': probs[i],
+    })
 
-    (x, y, w, h) = box
+candidates = sorted(candidates, key=lambda c: -1 * c['box'][2] * c['box'][3])
+for c in candidates:
+    (x, y, w, h) = c['box']
+
+    for c2 in candidates:
+        (x2, y2, w2, h2) = c2['box']
+        contains = x < x2 and y < y2 and x2 + w2 <= x + w and y2 + h2 <= y + h
+        if contains:
+            c_top_prob = np.argmax(c['prob'])
+            c2_top_prob = np.argmax(c2['prob'])
+
+            if c_top_prob == c2_top_prob:
+                candidates.remove(c2)
+
+for c in candidates:
+    top_prob_index = np.argmax(c['prob'])
+    top_char = recognize.data.label_chars[top_prob_index]
+
+    (x, y, w, h) = c['box']
     cv2.rectangle(img, (x, y), (x + w, y + h), (0, 0, 255), 1)
 
     font_face = cv2.FONT_HERSHEY_SIMPLEX

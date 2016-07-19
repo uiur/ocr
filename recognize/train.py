@@ -4,10 +4,8 @@ from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers import Convolution2D, MaxPooling2D
 from keras.optimizers import Adam
-from keras.utils import np_utils
 
 import os
-import string
 import glob
 import random
 import datetime
@@ -47,6 +45,7 @@ def path_to_class_char(path):
         class_char = class_char[0].upper()
 
     return class_char
+
 
 def load_test():
     test_dirname = './data/icdar2003_test/test'
