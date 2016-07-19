@@ -8,8 +8,8 @@ import tensorflow as tf
 
 import mser
 import detect_char.model
-import recognize.model
 import recognize.data
+from keras.models import model_from_json
 
 parser = argparse.ArgumentParser()
 parser.add_argument('image')
@@ -36,18 +36,17 @@ for index, value in enumerate(probs):
         positive_boxes.append(boxes[index])
         positive_rois.append(rois[index])
 
-# for box in positive_boxes:
-#     (x, y, w, h) = box
-#
-#     for box2 in positive_boxes:
-#         (x2, y2, w2, h2) = box2
-#
-#         if x2 <= x and y2 <= y and w2 < w and h2 < h:
-#             positive_boxes.remove(box2)
+recognize_model = model_from_json(open('saved_model/recognize/20160719.json').read())
+recognize_model.load_weights('saved_model/recognize/20160719-200.h5')
 
-tf.reset_default_graph()
+recognize_input = []
+for roi in positive_rois:
+    image = cv2.cvtColor(roi, cv2.COLOR_RGB2GRAY)
+    image = np.expand_dims(image, axis=2)
+    recognize_input.append(image.transpose((2, 1, 0)))
 
-probs = recognize.model.predict('tmp_tensorflow/recognize/20160708-3002', np.array(positive_rois))
+recognize_input = np.array(recognize_input)
+probs = recognize_model.predict(recognize_input)
 
 args = np.argsort(-probs)
 

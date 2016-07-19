@@ -1,107 +1,164 @@
-import tensorflow as tf
-import time
+from __future__ import print_function
+from keras.preprocessing.image import ImageDataGenerator
+from keras.models import Sequential
+from keras.layers import Dense, Dropout, Activation, Flatten
+from keras.layers import Convolution2D, MaxPooling2D
+from keras.optimizers import Adam
+from keras.utils import np_utils
 
-import data
-import model
+import os
+import string
+import glob
+import random
 import datetime
+import numpy as np
+import data
+from scipy.misc import imread, imresize
 
-import argparse
+random.seed(42)
+np.random.seed(42)
 
-tf.set_random_seed(42)
+label_chars = data.label_chars
 
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    '--learning-rate', type=float,
-    default=0.001
-)
+batch_size = 32
+nb_classes = len(label_chars)
+nb_epoch = 200
 
-parser.add_argument(
-    '--layer-num1', type=int,
-    default=32
-)
+nb_test = 1000
+data_augmentation = True
 
-parser.add_argument(
-    '--layer-num2', type=int,
-    default=64
-)
+img_rows, img_cols = 32, 32
+img_channels = 1
 
-args = parser.parse_args()
-print(vars(args))
 
-TEST_SIZE = data.test_size()
+def char_to_label(char):
+    index = label_chars.find(char)
 
-date_str = datetime.datetime.now().strftime("%Y%m%d")
+    label_array = np.zeros(len(label_chars), dtype=np.float32)
+    label_array[index] = 1.0
 
-x = tf.placeholder(tf.float32, shape=[None, data.SIZE, data.SIZE, data.CHANNEL])
-y_ = tf.placeholder(tf.float32, shape=[None, len(data.label_chars)])
-keep_prob = tf.placeholder(tf.float32)
+    return label_array
 
-logits = model.inference(x, keep_prob=keep_prob, layer_num1=args.layer_num1, layer_num2=args.layer_num2)
-total_loss = model.loss(logits, y_)
-predictions = tf.nn.softmax(logits)
 
-train_step = model.train(total_loss, learning_rate=args.learning_rate)
+def path_to_class_char(path):
+    class_char = os.path.basename(os.path.dirname(path))
 
-batch_op = data.batch(50)
+    if len(class_char) == 2 and class_char[1] == '_':
+        class_char = class_char[0].upper()
 
-saver = tf.train.Saver()
-sess = tf.Session()
+    return class_char
 
-merged = tf.merge_all_summaries()
-writer = tf.train.SummaryWriter("./tmp_tensorflow/recognize/logs", sess.graph_def)
+def load_test():
+    test_dirname = './data/icdar2003_test/test'
+    paths = glob.glob(test_dirname + '/*/*.png')
 
-accuracy = model.evaluate(predictions, y_)
-correct_prediction_count = model.correct_prediction_count(predictions, y_)
+    images = []
+    labels = []
+    for path in random.sample(paths, nb_test):
+        images.append(read_image(path))
+        labels.append(char_to_label(path_to_class_char(path)))
 
-test_batch_op = data.load_test_batch(64)
+    return np.array(images), np.array(labels)
 
-sess.run(tf.initialize_all_variables())
-tf.train.start_queue_runners(sess=sess)
 
-start_time = time.time()
+def read_image(path):
+    mode = 'RGB' if img_channels == 3 else 'L'
+    image = imresize(imread(path, mode=mode), (img_rows, img_cols))
+    if img_channels == 1:
+        image = np.expand_dims(image, axis=2)
 
-def eval_in_batch(sess):
-    correct_count = 0
-    total_test_size = 0
+    image = image.transpose((2, 1, 0)).astype('float32')
+    return image / 255.0
+
+
+def load_data(dirname, sample_size=1024):
+    paths = glob.glob(dirname + '/*/*.png')
+
     while True:
-        if total_test_size >= TEST_SIZE:
-            break
+        sample_paths = random.sample(paths, sample_size)
+        chars = [path_to_class_char(path) for path in sample_paths]
 
-        test_images, test_labels = sess.run(test_batch_op)
+        images = None
+        for sample_path in sample_paths:
+            image = read_image(sample_path)
+            if images is not None:
+                images = np.append(images, [image], axis=0)
+            else:
+                images = np.array([image])
 
-        correct_count += sess.run(correct_prediction_count, feed_dict={
-          x: test_images,
-          y_: test_labels,
-          keep_prob: 1.0
-        })
-        total_test_size += len(test_images)
+        labels = np.array([char_to_label(char) for char in chars])
 
-    test_accuracy = correct_count / total_test_size
-    return test_accuracy
+        yield images, labels
 
-step = 0
-prev_test_accuracy = 0.0
-while True:
-    batch = sess.run(batch_op)
 
-    if step % 100 == 0:
-        train_accuracy = sess.run(accuracy, feed_dict={x: batch[0], y_: batch[1], keep_prob: 1.0})
+def deprocess_image(image):
+    image = image.transpose((1, 2, 0))
+    image *= 255.0
+    image = np.clip(image, 0, 255).astype('uint8')
+    return image
 
-        test_accuracy = eval_in_batch(sess)
 
-        print('step:%d  train:%0.04f   test:%0.04f    time:%0.03f' % (step, train_accuracy, test_accuracy, time.time() - start_time))
+model = Sequential()
 
-        start_time = time.time()
+model.add(Convolution2D(32, 3, 3, border_mode='same',
+                        input_shape=(img_channels, img_rows, img_cols)))
+model.add(Activation('relu'))
+model.add(Convolution2D(32, 3, 3))
+model.add(Activation('relu'))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+model.add(Dropout(0.25))
 
-    sess.run(train_step, feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.5})
+model.add(Convolution2D(64, 3, 3, border_mode='same'))
+model.add(Activation('relu'))
+model.add(Convolution2D(64, 3, 3))
+model.add(Activation('relu'))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+model.add(Dropout(0.25))
 
-    if step > 0 and step % 1000 == 0:
-        saver.save(sess, './tmp_tensorflow/recognize/' + date_str, global_step=step)
+model.add(Flatten())
+model.add(Dense(512))
+model.add(Activation('relu'))
+model.add(Dropout(0.5))
+model.add(Dense(nb_classes))
+model.add(Activation('softmax'))
 
-        # early stopping
-        if step >= 2000 and abs(test_accuracy - prev_test_accuracy) < prev_test_accuracy * 0.05:
-            break
+model.compile(loss='categorical_crossentropy',
+              optimizer=Adam(),
+              metrics=['accuracy'])
 
-        prev_test_accuracy = test_accuracy
+x_test, y_test = load_test()
 
-    step += 1
+datagen = ImageDataGenerator(
+    rotation_range=30,
+)
+datagen.fit(x_test)
+
+date_string = datetime.datetime.now().strftime("%Y%m%d")
+
+epoch = 0
+for x_train, y_train in load_data('./data/char74k/train'):
+    if epoch > nb_epoch:
+        break
+
+    flow = datagen.flow(x_train, y_train, batch_size=batch_size)
+
+    epoch_per_chunk = x_train.shape[0] / batch_size
+    hist = model.fit_generator(
+        flow,
+        verbose=0,
+        samples_per_epoch=batch_size,
+        validation_data=(x_test, y_test),
+        nb_epoch=epoch_per_chunk,
+    )
+
+    h = hist.history
+
+    print("epoch:%d\tloss:%.4f\tacc:%.4f\tval_loss:%.4f\tval_acc:%.4f" % (epoch, h['loss'][-1], h['acc'][-1], h['val_loss'][-1], h['val_acc'][-1]))
+
+    if epoch % 10 == 0:
+        dirname = 'saved_model/recognize'
+        os.makedirs(dirname, exist_ok=True)
+        open('%s/%s.json' % (dirname, date_string), 'w').write(model.to_json())
+        model.save_weights('%s/%s-%d.h5' % (dirname, date_string, epoch))
+
+    epoch += 1
