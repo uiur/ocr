@@ -1,50 +1,79 @@
-import tensorflow as tf
-import data
-import time
-from model import *
+import glob
+import random
+import datetime
+import numpy as np
+import os
+from scipy.misc import imread, imresize
 
-x = tf.placeholder(tf.float32, shape=[None, data.SIZE, data.SIZE, data.CHANNEL])
-y_ = tf.placeholder(tf.float32, shape=[None, 2])
-keep_prob = tf.placeholder(tf.float32)
+from keras.models import Sequential
+from keras.layers import Dense, Dropout, Activation, Flatten
+from keras.layers import Convolution2D, MaxPooling2D
+from keras.optimizers import Adam
+from keras.callbacks import EarlyStopping
 
-logits = inference(x, keep_prob=keep_prob)
-total_loss = loss(logits, y_)
-predictions = tf.nn.softmax(logits)
+random.seed(42)
+np.random.seed(42)
 
-train_step = train(total_loss)
+img_rows = 32
+img_cols = 32
+img_channels = 1
 
-batch_op = data.batch(50)
-load_test_op = data.load_test()
 
-saver = tf.train.Saver()
-sess = tf.Session()
+def load_from_dir(dirname):
+    positive_paths = glob.glob(dirname + '/1/*.png')
+    positive_images = np.array([read_image(path) for path in positive_paths])
+    positive_labels = np.array([[0., 1.] for _ in range(len(positive_paths))])
 
-merged = tf.merge_all_summaries()
-writer = tf.train.SummaryWriter("./tmp_tensorflow/logs", sess.graph_def)
-accuracy = evaluate(predictions, y_)
+    negative_paths = glob.glob(dirname + '/0/*.png')
 
-sess.run(tf.initialize_all_variables())
-tf.train.start_queue_runners(sess=sess)
+    negative_images = np.array([read_image(path) for path in negative_paths])
+    negative_labels = np.array([[1., 0.] for _ in range(len(negative_paths))])
 
-test_images, test_labels = sess.run(load_test_op)
+    return np.concatenate((positive_images, negative_images), axis=0), np.concatenate((positive_labels, negative_labels), axis=0)
 
-start_time = time.time()
 
-for i in range(10000):
-  batch = sess.run(batch_op)
+def read_image(path):
+    mode = 'RGB' if img_channels == 3 else 'L'
+    image = imresize(imread(path, mode=mode), (img_rows, img_cols))
+    if img_channels == 1:
+        image = np.expand_dims(image, axis=2)
 
-  if i % 100 == 0:
-      train_accuracy = sess.run(accuracy, feed_dict={x: batch[0], y_: batch[1], keep_prob: 1.0 })
-      (m, test_accuracy) = sess.run([merged, accuracy], feed_dict={x: test_images, y_: test_labels, keep_prob: 1.0 })
+    image = image.transpose((2, 1, 0)).astype('float32')
+    return image / 255.0
 
-      writer.add_summary(m, i)
+x_train, y_train = load_from_dir('data/char_or_not/train')
+x_test, y_test = load_from_dir('data/char_or_not/test')
 
-      print('epoch: %d  train: %0.04f   test: %0.04f    time: %0.03f' % (i, train_accuracy, test_accuracy, time.time() - start_time))
-      start_time = time.time()
+model = Sequential()
 
-  sess.run(train_step, feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.5})
+model.add(Convolution2D(32, 3, 3,
+                        border_mode='valid',
+                        input_shape=(1, img_rows, img_cols)))
+model.add(Activation('relu'))
+model.add(Convolution2D(32, 3, 3))
+model.add(Activation('relu'))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+model.add(Dropout(0.25))
 
-  if (i+1) % 1000 == 0:
-     saver.save(sess, './tmp_tensorflow/train/20160707', global_step=(i + 1))
+model.add(Flatten())
+model.add(Dense(128))
+model.add(Activation('relu'))
+model.add(Dropout(0.5))
+model.add(Dense(2))
+model.add(Activation('softmax'))
 
-print(sess.run(accuracy, feed_dict={x: test_images, y_: test_labels, keep_prob: 1.0}))
+model.compile(
+    loss='categorical_crossentropy',
+    optimizer=Adam(),
+    metrics=['accuracy'],
+)
+
+early_stopping = EarlyStopping(monitor='val_loss', patience=2)
+model.fit(x_train, y_train, nb_epoch=100, validation_data=(x_test, y_test), callbacks=[early_stopping])
+
+
+date_string = datetime.datetime.now().strftime("%Y%m%d")
+dirname = 'saved_model/detect_char'
+os.makedirs(dirname, exist_ok=True)
+open('%s/%s.json' % (dirname, date_string), 'w').write(model.to_json())
+model.save_weights('%s/%s.h5' % (dirname, date_string))
