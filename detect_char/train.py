@@ -41,8 +41,7 @@ def read_image(path):
     image = image.transpose((2, 1, 0)).astype('float32')
     return image / 255.0
 
-x_train, y_train = load_from_dir('data/char_or_not/train')
-x_test, y_test = load_from_dir('data/char_or_not/test')
+x_train, y_train = load_from_dir('data/char_or_not')
 
 model = Sequential()
 
@@ -69,11 +68,11 @@ model.compile(
 )
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=2)
-model.fit(x_train, y_train, nb_epoch=100, validation_data=(x_test, y_test), callbacks=[early_stopping])
+model.fit(x_train, y_train, validation_split=0.2, nb_epoch=100, callbacks=[early_stopping])
 
 
 date_string = datetime.datetime.now().strftime("%Y%m%d")
 dirname = 'saved_model/detect_char'
 os.makedirs(dirname, exist_ok=True)
 open('%s/%s.json' % (dirname, date_string), 'w').write(model.to_json())
-model.save_weights('%s/%s.h5' % (dirname, date_string))
+model.save_weights('%s/%s.h5' % (dirname, date_string), overwrite=True)
