@@ -1,12 +1,11 @@
 import cv2
-import os
 import numpy as np
 import argparse
-import tensorflow as tf
 
 import mser
 import recognize.data
 from keras.models import model_from_json
+
 
 def to_keras_input(images):
     result = []
@@ -28,8 +27,8 @@ boxes = [mser.bounding_box_of_region(img, region) for region in regions]
 rois = mser.mser_rois(img)
 rois = np.array([cv2.resize(roi, (32, 32)) for roi in rois])
 
-detect_model = model_from_json(open('saved_model/detect_char/20160719.json').read())
-detect_model.load_weights('saved_model/detect_char/20160719.h5')
+detect_model = model_from_json(open('saved_model/detect_char/20160721.json').read())
+detect_model.load_weights('saved_model/detect_char/20160721.h5')
 detect_probs = detect_model.predict(to_keras_input(rois))
 
 positive_boxes = []
@@ -37,7 +36,7 @@ positive_rois = []
 
 threshold = 0.6
 for index, value in enumerate(detect_probs):
-    if value[1] > threshold:
+    if value[0] > threshold:
         positive_boxes.append(boxes[index])
         positive_rois.append(rois[index])
 
